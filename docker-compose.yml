@@ -1,0 +1,46 @@
+services:
+
+    postgres:
+        container_name: postgres
+        image: postgres:15.10-alpine
+        volumes:
+            - ./postgres-init-schema.sql:/docker-entrypoint-initdb.d/01-postgres-init-schema.sql
+        ports: 
+            - "5432:5432"
+        environment:
+            - TZ=America/Los_Angeles
+        env_file: 
+            - ./database-dev-secret.env
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    pgadmin:
+        container_name: pgadmin
+        image: dpage/pgadmin4
+        ports:
+            - '127.0.0.1:1025:80'
+        environment: 
+            - TZ=America/Los_Angeles
+        env_file: 
+            - ./database-dev-secret.env
+        volumes:
+            - ./database-dev-server.json:/pgadmin4/servers.json
+            - ./database-dev-secret.pgpass:/tmp/pgpass
+        entrypoint: >
+            /bin/sh -c "
+            mkdir -p /var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL_STORAGE};
+            cp /tmp/pgpass /var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL_STORAGE}/pgpass;
+            chmod 600 /var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL_STORAGE}/pgpass;
+            /entrypoint.sh;
+            "
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+            interval: 30s
+            timeout: 10s
+            start_period: 160s
+            retries: 3
