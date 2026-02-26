@@ -1,0 +1,28 @@
+networks:
+    proxy_network:
+        name: proxy_network
+
+services:
+
+    nginx:
+        image: nginx:stable-alpine-slim
+        container_name: nginx
+        restart: unless-stopped
+        environment:
+            - TZ=America/Los_Angeles
+        volumes:
+            - ./html:/etc/nginx/html:ro
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./cer.pem:/etc/certs/cer.pem:ro
+            - ./key.pem:/etc/certs/key.pem:ro
+        ports: 
+            - 127.0.0.1:8443:443
+        networks:
+            - proxy_network
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+            start_period: 10s
+            retries: 3
+            timeout: 10s
+            interval: 30s
+

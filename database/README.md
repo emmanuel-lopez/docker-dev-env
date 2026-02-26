@@ -14,6 +14,7 @@ Setups a Postgres database and PGAdmin web interface.
 Add SQL statements to setup schema or initialize the database
 
 ### Note
- * Port over > 1024 used to support rootless docker
- * Restricted to requests from localhost
+ * Port over > 1024 used to support rootless docker, request restricted from localhost, commented out
+ * Currently setup to access PGAdmin through the nginx proxy, see /baseline/nginx.conf
  * These limitations can be changed/removed in the docker-compose.yml file
+ * Containers trying to access the database **must** be in the **database_network** to be reachable Postgres

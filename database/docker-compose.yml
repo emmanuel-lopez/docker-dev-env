@@ -1,35 +1,48 @@
+networks:
+    database_network:
+        name: database_network
+    proxy_network:
+        name: proxy_network
+
 services:
 
     postgres:
         container_name: postgres
         image: postgres:15.10-alpine
+        restart: unless-stopped
         volumes:
             - ./postgres-init-schema.sql:/docker-entrypoint-initdb.d/01-postgres-init-schema.sql
         ports: 
-            - "5432:5432"
+            - "127.0.0.1:5432:5432"
+        networks:
+            - database_network
         environment:
             - TZ=America/Los_Angeles
         env_file: 
-            - ./database-dev-secret.env
-        restart: unless-stopped
+            - ./database-dev-secret.conf
         healthcheck:
             test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'"]
-            interval: 30s
-            timeout: 5s
+            start_period: 30s
             retries: 3
+            timeout: 10s
+            interval: 30s
 
     pgadmin:
         container_name: pgadmin
         image: dpage/pgadmin4
-        ports:
-            - '127.0.0.1:1025:80'
-        environment: 
-            - TZ=America/Los_Angeles
-        env_file: 
-            - ./database-dev-secret.env
+        restart: unless-stopped
         volumes:
             - ./database-dev-server.json:/pgadmin4/servers.json
             - ./database-dev-secret.pgpass:/tmp/pgpass
+#        ports:
+#            - '127.0.0.1:8080:80'
+        networks:
+            - database_network
+            - proxy_network
+        environment: 
+            - TZ=America/Los_Angeles
+        env_file: 
+            - ./database-dev-secret.conf
         entrypoint: >
             /bin/sh -c "
             mkdir -p /var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL_STORAGE};
@@ -37,10 +50,9 @@ services:
             chmod 600 /var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL_STORAGE}/pgpass;
             /entrypoint.sh;
             "
-        restart: unless-stopped
         healthcheck:
-            test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
-            interval: 30s
-            timeout: 10s
-            start_period: 160s
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/misc/ping"]            
+            start_period: 30s
             retries: 3
+            timeout: 10s
+            interval: 30s
